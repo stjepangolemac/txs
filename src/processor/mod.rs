@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -94,15 +95,17 @@ impl Processor {
         let transaction_id = message.2;
         let transaction: Transaction = message.into();
 
-        match transaction {
+        let _ = match transaction {
             Transaction::Deposit(ref data) => behaviors::deposit(&data, &mut self.accounts),
-            // Transaction::Withdrawal(ref data) => behaviors::deposit(data, &mut self.accounts),
-            // Transaction::Dispute(ref data) => behaviors::deposit(data, &mut self.accounts),
+            Transaction::Withdrawal(ref data) => behaviors::withdrawal(data, &mut self.accounts),
+            Transaction::Dispute(ref data) => {
+                behaviors::dispute(data, &mut self.accounts, &self.transactions)
+            }
             // Transaction::Resolve(ref data) => behaviors::deposit(data, &mut self.accounts),
             // Transaction::Chargeback(ref data) => behaviors::deposit(data, &mut self.accounts),
             // TODO Remove panic
-            _ => panic!(),
-        }
+            _ => Err(anyhow!("Something is messed up")),
+        };
 
         self.transactions.insert(transaction_id, transaction);
     }
