@@ -14,8 +14,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     for message in reader.deserialize() {
         processor.process(message?);
-        todo!()
     }
+
+    let snapshot = processor.snapshot();
+    dbg!(snapshot);
 
     Ok(())
 }

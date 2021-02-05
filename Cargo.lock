@@ -207,6 +207,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust_decimal_macros"
+version = "1.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23ef86ba9162ebad914872c1162ce0845a490213ff3f2bf97193f815b5330c4d"
+dependencies = [
+ "quote",
+ "rust_decimal",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -288,6 +298,7 @@ version = "0.1.0"
 dependencies = [
  "csv",
  "rust_decimal",
+ "rust_decimal_macros",
  "serde",
  "structopt",
 ]
