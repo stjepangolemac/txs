@@ -1,7 +1,14 @@
-mod cli;
+use std::error::Error;
+use std::fs::File;
 
-fn main() {
+mod cli;
+mod processor;
+
+fn main() -> Result<(), Box<dyn Error>> {
     let options = cli::get_options();
 
-    dbg!(options);
+    let file = File::open(options.input)?;
+    let reader = csv::Reader::from_reader(file);
+
+    Ok(())
 }
