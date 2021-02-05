@@ -1,20 +1,48 @@
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-struct MessageData {
-    client: u16,
-    tx: u32,
+type ClientId = u16;
+type TransactionId = u32;
+
+#[derive(Debug, Deserialize)]
+pub enum MessageType {
+    #[serde(alias = "deposit")]
+    Deposit,
+
+    #[serde(alias = "withdrawal")]
+    Withdrawal,
+
+    #[serde(alias = "dispute")]
+    Dispute,
+
+    #[serde(alias = "resolve")]
+    Resolve,
+
+    #[serde(alias = "chargeback")]
+    Chargeback,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Message(MessageType, ClientId, TransactionId, Option<Decimal>);
+
+#[derive(Debug, Deserialize)]
+struct TransactionData {
+    client: ClientId,
+    tx: TransactionId,
     amount: Option<Decimal>,
 }
 
+#[derive(Debug, Deserialize)]
 enum Transaction {
-    Deposit(MessageData),
-    Withdrawal(MessageData),
-    Dispute(MessageData),
-    Resolve(MessageData),
-    Chargeback(MessageData),
+    Deposit(TransactionData),
+    Withdrawal(TransactionData),
+    Dispute(TransactionData),
+    Resolve(TransactionData),
+    Chargeback(TransactionData),
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 struct Account {
     available: Decimal,
     held: Decimal,
@@ -35,7 +63,7 @@ impl Processor {
         }
     }
 
-    pub fn process(&mut self, transaction: Transaction) {
+    pub fn process(&mut self, message: Message) {
         todo!()
     }
 
