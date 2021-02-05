@@ -78,9 +78,14 @@ impl Account {
     }
 }
 
+pub type Accounts = HashMap<u16, Account>;
+
+pub type Disputed = bool;
+pub type Transactions = HashMap<u32, (Transaction, Disputed)>;
+
 pub struct Processor {
-    accounts: HashMap<u16, Account>,
-    transactions: HashMap<u32, Transaction>,
+    accounts: Accounts,
+    transactions: Transactions,
 }
 
 impl Processor {
@@ -96,20 +101,32 @@ impl Processor {
         let transaction: Transaction = message.into();
 
         let _ = match transaction {
-            Transaction::Deposit(ref data) => behaviors::deposit(&data, &mut self.accounts),
-            Transaction::Withdrawal(ref data) => behaviors::withdrawal(data, &mut self.accounts),
+            Transaction::Deposit(ref data) => {
+                let res = behaviors::deposit(&data, &mut self.accounts);
+
+                self.transactions
+                    .insert(transaction_id, (transaction, false));
+
+                res
+            }
+            Transaction::Withdrawal(ref data) => {
+                let res = behaviors::withdrawal(data, &mut self.accounts);
+
+                self.transactions
+                    .insert(transaction_id, (transaction, false));
+
+                res
+            }
             Transaction::Dispute(ref data) => {
-                behaviors::dispute(data, &mut self.accounts, &self.transactions)
+                behaviors::dispute(data, &mut self.accounts, &mut self.transactions)
             }
             Transaction::Resolve(ref data) => {
-                behaviors::resolve(data, &mut self.accounts, &self.transactions)
+                behaviors::resolve(data, &mut self.accounts, &mut self.transactions)
             }
             // Transaction::Chargeback(ref data) => behaviors::deposit(data, &mut self.accounts),
             // TODO Remove panic
             _ => Err(anyhow!("Something is messed up")),
         };
-
-        self.transactions.insert(transaction_id, transaction);
     }
 
     pub fn snapshot(&self) -> &HashMap<u16, Account> {

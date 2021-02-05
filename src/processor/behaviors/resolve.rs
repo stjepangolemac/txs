@@ -1,11 +1,13 @@
-use crate::processor::{Account, ClientId, Transaction, TransactionData, TransactionId};
+use crate::processor::{
+    Account, Accounts, ClientId, Transaction, TransactionData, TransactionId, Transactions,
+};
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 
 pub fn resolve(
     data: &TransactionData,
-    accounts: &mut HashMap<ClientId, Account>,
-    transactions: &HashMap<TransactionId, Transaction>,
+    accounts: &mut Accounts,
+    transactions: &mut Transactions,
 ) -> Result<()> {
     let TransactionData {
         client,
@@ -13,7 +15,13 @@ pub fn resolve(
         ..
     } = data;
 
-    if let Some(referenced_transaction) = transactions.get(transaction) {
+    if let Some((referenced_transaction, referenced_transaction_disputed)) =
+        transactions.get_mut(transaction)
+    {
+        if !*referenced_transaction_disputed {
+            return Err(anyhow!("Cannot resolve non-disputed transaction"));
+        }
+
         let amount = match referenced_transaction {
             Transaction::Deposit(data) => data
                 .amount
@@ -28,13 +36,15 @@ pub fn resolve(
             if not_frozen && has_held_funds {
                 account.available += amount;
                 account.held -= amount;
+
+                *referenced_transaction_disputed = false;
             }
         });
 
         return Ok(());
     }
 
-    Err(anyhow!("Cannot dispute unknown transaction"))
+    Ok(())
 }
 
 #[cfg(test)]
@@ -58,14 +68,17 @@ mod tests {
             },
         );
 
-        let mut transactions: HashMap<TransactionId, Transaction> = HashMap::new();
+        let mut transactions: Transactions = HashMap::new();
         transactions.insert(
             deposit_transaction_id,
-            Transaction::Deposit(TransactionData {
-                client,
-                transaction: deposit_transaction_id,
-                amount: Some(deposit_amount),
-            }),
+            (
+                Transaction::Deposit(TransactionData {
+                    client,
+                    transaction: deposit_transaction_id,
+                    amount: Some(deposit_amount),
+                }),
+                true,
+            ),
         );
 
         let data = TransactionData {
@@ -74,37 +87,11 @@ mod tests {
             amount: None,
         };
 
-        let res = resolve(&data, &mut accounts, &transactions);
+        let res = resolve(&data, &mut accounts, &mut transactions);
         assert!(res.is_ok());
 
         let account = accounts.get(&client).unwrap();
         assert_eq!(account.available, deposit_amount);
-    }
-
-    #[test]
-    fn cannot_resolve_unknown_transaction() {
-        let client = 1;
-
-        let mut accounts: HashMap<ClientId, Account> = HashMap::new();
-        accounts.insert(
-            client,
-            Account {
-                available: dec!(0),
-                held: dec!(0),
-                frozen: false,
-            },
-        );
-
-        let transactions: HashMap<TransactionId, Transaction> = HashMap::new();
-
-        let data = TransactionData {
-            client,
-            transaction: 1,
-            amount: None,
-        };
-
-        let res = resolve(&data, &mut accounts, &transactions);
-        assert!(res.is_err());
     }
 
     #[test]
@@ -123,14 +110,17 @@ mod tests {
             },
         );
 
-        let mut transactions: HashMap<TransactionId, Transaction> = HashMap::new();
+        let mut transactions: Transactions = HashMap::new();
         transactions.insert(
             withdrawal_transaction_id,
-            Transaction::Withdrawal(TransactionData {
-                client,
-                transaction: withdrawal_transaction_id,
-                amount: Some(withdrawal_amount),
-            }),
+            (
+                Transaction::Withdrawal(TransactionData {
+                    client,
+                    transaction: withdrawal_transaction_id,
+                    amount: Some(withdrawal_amount),
+                }),
+                true,
+            ),
         );
 
         let data = TransactionData {
@@ -139,7 +129,7 @@ mod tests {
             amount: None,
         };
 
-        let res = resolve(&data, &mut accounts, &transactions);
+        let res = resolve(&data, &mut accounts, &mut transactions);
         assert!(res.is_err());
     }
 }
