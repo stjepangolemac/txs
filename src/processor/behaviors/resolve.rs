@@ -2,7 +2,7 @@ use crate::processor::{Account, ClientId, Transaction, TransactionData, Transact
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 
-pub fn dispute(
+pub fn resolve(
     data: &TransactionData,
     accounts: &mut HashMap<ClientId, Account>,
     transactions: &HashMap<TransactionId, Transaction>,
@@ -18,16 +18,16 @@ pub fn dispute(
             Transaction::Deposit(data) => data
                 .amount
                 .ok_or_else(|| anyhow!("Referenced deposit should have the amount")),
-            _ => Err(anyhow!("Cannot dispute non deposit")),
+            _ => Err(anyhow!("Cannot resolve non deposit")),
         }?;
 
         accounts.entry(*client).and_modify(|account| {
             let not_frozen = !account.frozen;
-            let has_funds = account.available >= amount;
+            let has_held_funds = account.held >= amount;
 
-            if not_frozen && has_funds {
-                account.available -= amount;
-                account.held += amount;
+            if not_frozen && has_held_funds {
+                account.available += amount;
+                account.held -= amount;
             }
         });
 
@@ -43,7 +43,7 @@ mod tests {
     use rust_decimal_macros::*;
 
     #[test]
-    fn dispute_works() {
+    fn resolution_works() {
         let client = 1;
         let deposit_amount = dec!(5);
         let deposit_transaction_id = 1;
@@ -52,8 +52,8 @@ mod tests {
         accounts.insert(
             client,
             Account {
-                available: deposit_amount,
-                held: dec!(0),
+                available: dec!(0),
+                held: deposit_amount,
                 frozen: false,
             },
         );
@@ -74,15 +74,15 @@ mod tests {
             amount: None,
         };
 
-        let res = dispute(&data, &mut accounts, &transactions);
+        let res = resolve(&data, &mut accounts, &transactions);
         assert!(res.is_ok());
 
         let account = accounts.get(&client).unwrap();
-        assert_eq!(account.available, dec!(0));
+        assert_eq!(account.available, deposit_amount);
     }
 
     #[test]
-    fn cannot_dispute_unknown_transaction() {
+    fn cannot_resolve_unknown_transaction() {
         let client = 1;
 
         let mut accounts: HashMap<ClientId, Account> = HashMap::new();
@@ -103,12 +103,12 @@ mod tests {
             amount: None,
         };
 
-        let res = dispute(&data, &mut accounts, &transactions);
+        let res = resolve(&data, &mut accounts, &transactions);
         assert!(res.is_err());
     }
 
     #[test]
-    fn cannot_dispute_non_deposit() {
+    fn cannot_resolve_non_deposit() {
         let client = 1;
         let withdrawal_amount = dec!(5);
         let withdrawal_transaction_id = 1;
@@ -135,11 +135,11 @@ mod tests {
 
         let data = TransactionData {
             client,
-            transaction: withdrawal_transaction_id,
+            transaction: 1,
             amount: None,
         };
 
-        let res = dispute(&data, &mut accounts, &transactions);
+        let res = resolve(&data, &mut accounts, &transactions);
         assert!(res.is_err());
     }
 }

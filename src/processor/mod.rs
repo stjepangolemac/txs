@@ -101,7 +101,9 @@ impl Processor {
             Transaction::Dispute(ref data) => {
                 behaviors::dispute(data, &mut self.accounts, &self.transactions)
             }
-            // Transaction::Resolve(ref data) => behaviors::deposit(data, &mut self.accounts),
+            Transaction::Resolve(ref data) => {
+                behaviors::resolve(data, &mut self.accounts, &self.transactions)
+            }
             // Transaction::Chargeback(ref data) => behaviors::deposit(data, &mut self.accounts),
             // TODO Remove panic
             _ => Err(anyhow!("Something is messed up")),
