@@ -1,27 +1,19 @@
 use crate::processor::{Account, ClientId, TransactionData};
 use anyhow::{anyhow, Result};
-use rust_decimal_macros::*;
 use std::collections::HashMap;
 
 pub fn withdrawal(data: &TransactionData, accounts: &mut HashMap<ClientId, Account>) -> Result<()> {
     let TransactionData { client, amount, .. } = data;
     let amount = amount.ok_or(anyhow!("Withdrawal should have the amount"))?;
 
-    accounts
-        .entry(*client)
-        .and_modify(|account| {
-            let not_frozen = !account.frozen;
-            let has_funds = account.available >= amount;
+    accounts.entry(*client).and_modify(|account| {
+        let not_frozen = !account.frozen;
+        let has_funds = account.available >= amount;
 
-            if not_frozen && has_funds {
-                account.available -= amount
-            }
-        })
-        .or_insert_with(|| Account {
-            available: amount,
-            held: dec!(0),
-            frozen: false,
-        });
+        if not_frozen && has_funds {
+            account.available -= amount
+        }
+    });
 
     Ok(())
 }
@@ -29,6 +21,7 @@ pub fn withdrawal(data: &TransactionData, accounts: &mut HashMap<ClientId, Accou
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rust_decimal_macros::*;
 
     #[test]
     fn withdrawal_works() {
