@@ -1,8 +1,5 @@
-use crate::processor::{
-    Account, Accounts, ClientId, Transaction, TransactionData, TransactionId, Transactions,
-};
+use crate::processor::{Accounts, Transaction, TransactionData, Transactions};
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
 
 pub fn chargeback(
     data: &TransactionData,
@@ -47,7 +44,9 @@ pub fn chargeback(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::processor::Account;
     use rust_decimal_macros::*;
+    use std::collections::HashMap;
 
     #[test]
     fn chargeback_works() {
@@ -55,7 +54,7 @@ mod tests {
         let deposit_amount = dec!(5);
         let deposit_transaction_id = 1;
 
-        let mut accounts: HashMap<ClientId, Account> = HashMap::new();
+        let mut accounts: Accounts = HashMap::new();
         accounts.insert(
             client,
             Account {
@@ -98,7 +97,7 @@ mod tests {
         let withdrawal_amount = dec!(5);
         let withdrawal_transaction_id = 1;
 
-        let mut accounts: HashMap<ClientId, Account> = HashMap::new();
+        let mut accounts: Accounts = HashMap::new();
         accounts.insert(
             client,
             Account {

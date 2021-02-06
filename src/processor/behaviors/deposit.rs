@@ -1,9 +1,8 @@
-use crate::processor::{Account, ClientId, TransactionData};
+use crate::processor::{Account, Accounts, TransactionData};
 use anyhow::Result;
 use rust_decimal_macros::*;
-use std::collections::HashMap;
 
-pub fn deposit(data: &TransactionData, accounts: &mut HashMap<ClientId, Account>) -> Result<()> {
+pub fn deposit(data: &TransactionData, accounts: &mut Accounts) -> Result<()> {
     let TransactionData { client, amount, .. } = data;
     let amount = amount.expect("Deposit should have the amount");
 
@@ -26,13 +25,14 @@ pub fn deposit(data: &TransactionData, accounts: &mut HashMap<ClientId, Account>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn deposit_works() {
         let client = 1;
         let amount = dec!(5);
 
-        let mut accounts: HashMap<ClientId, Account> = HashMap::new();
+        let mut accounts: Accounts = HashMap::new();
 
         let data = TransactionData {
             client,
@@ -56,7 +56,7 @@ mod tests {
         let amount = dec!(5);
         let available = dec!(0);
 
-        let mut accounts: HashMap<ClientId, Account> = HashMap::new();
+        let mut accounts: Accounts = HashMap::new();
         accounts.insert(
             client,
             Account {
