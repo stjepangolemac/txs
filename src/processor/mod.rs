@@ -103,7 +103,7 @@ impl Processor {
         let transaction_id = message.2;
         let transaction: Transaction = message.into();
 
-        let _ = match transaction {
+        let res = match transaction {
             Transaction::Deposit(ref data) => behaviors::deposit(&data, &mut self.accounts),
             Transaction::Withdrawal(ref data) => behaviors::withdrawal(data, &mut self.accounts),
             Transaction::Dispute(ref data) => {
@@ -116,6 +116,8 @@ impl Processor {
                 behaviors::chargeback(data, &mut self.accounts, &mut self.transactions)
             }
         };
+
+        dbg!(res);
 
         if matches!(transaction, Transaction::Deposit(_)) {
             self.transactions

@@ -6,16 +6,23 @@ pub fn withdrawal(data: &TransactionData, accounts: &mut HashMap<ClientId, Accou
     let TransactionData { client, amount, .. } = data;
     let amount = amount.ok_or(anyhow!("Withdrawal should have the amount"))?;
 
-    accounts.entry(*client).and_modify(|account| {
-        let not_frozen = !account.frozen;
-        let has_funds = account.available >= amount;
+    let mut res = Ok(());
 
-        if not_frozen && has_funds {
-            account.available -= amount
+    accounts.entry(*client).and_modify(|account| {
+        if account.frozen {
+            res = Err(anyhow!("Cannot withdraw from a frozen account"));
+            return;
         }
+
+        if account.available < amount {
+            res = Err(anyhow!("Cannot withdraw, insufficient funds"));
+            return;
+        }
+
+        account.available -= amount
     });
 
-    Ok(())
+    res
 }
 
 #[cfg(test)]
@@ -102,12 +109,32 @@ mod tests {
         };
 
         let res = withdrawal(&data, &mut accounts);
-        assert!(res.is_ok());
+        assert!(res.is_err());
+    }
 
-        let account = accounts.get(&client);
-        assert!(account.is_some());
+    #[test]
+    fn cannot_withdraw_if_no_funds() {
+        let client = 1;
+        let amount = dec!(4);
+        let available = dec!(2);
 
-        let account = account.unwrap();
-        assert_eq!(account.available, available);
+        let mut accounts: HashMap<ClientId, Account> = HashMap::new();
+        accounts.insert(
+            client,
+            Account {
+                available,
+                held: dec!(0),
+                frozen: false,
+            },
+        );
+
+        let data = TransactionData {
+            client,
+            transaction: 1,
+            amount: Some(amount),
+        };
+
+        let res = withdrawal(&data, &mut accounts);
+        assert!(res.is_err());
     }
 }
