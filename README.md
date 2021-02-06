@@ -12,6 +12,8 @@ Common transaction combinations and behaviors are fully tested which can be chec
 cargo test
 ```
 
+The memory footprint is constant relative to the size of the data set. It will increase with the new accounts and new deposit transactions (only type of transaction tracked for the dispute purposes).
+
 # Behaviors
 
 I don't have a lot of experience with business rules of disputes and chargebacks so it's possible I've made a mistake. Here are the things I implemented even though I'm not sure that they're right.
