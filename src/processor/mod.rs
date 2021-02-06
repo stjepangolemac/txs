@@ -130,3 +130,117 @@ impl Processor {
         &self.accounts
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rust_decimal_macros::*;
+
+    fn get_processed_snapshot(messages: Vec<Message>) -> Accounts {
+        let mut processor = Processor::new();
+
+        messages
+            .into_iter()
+            .for_each(|message| processor.process(message));
+
+        processor.accounts
+    }
+
+    #[test]
+    fn deposits() {
+        let messages = {
+            use MessageType::*;
+
+            vec![
+                Message(Deposit, 1, 1, Some(dec!(10))),
+                Message(Deposit, 2, 2, Some(dec!(5))),
+                Message(Deposit, 1, 3, Some(dec!(3))),
+            ]
+        };
+
+        let snapshot = get_processed_snapshot(messages);
+
+        let account1 = snapshot.get(&1).unwrap();
+        assert_eq!(account1.available, dec!(13));
+
+        let account2 = snapshot.get(&2).unwrap();
+        assert_eq!(account2.available, dec!(5));
+    }
+
+    #[test]
+    fn withdrawals() {
+        let messages = {
+            use MessageType::*;
+
+            vec![
+                Message(Deposit, 1, 1, Some(dec!(10))),
+                Message(Withdrawal, 1, 2, Some(dec!(3))),
+            ]
+        };
+
+        let snapshot = get_processed_snapshot(messages);
+
+        let account1 = snapshot.get(&1).unwrap();
+        assert_eq!(account1.available, dec!(7));
+    }
+
+    #[test]
+    fn dispute() {
+        let messages = {
+            use MessageType::*;
+
+            vec![
+                Message(Deposit, 1, 1, Some(dec!(10))),
+                Message(Deposit, 1, 2, Some(dec!(5))),
+                Message(Dispute, 1, 2, None),
+            ]
+        };
+
+        let snapshot = get_processed_snapshot(messages);
+
+        let account1 = snapshot.get(&1).unwrap();
+        assert_eq!(account1.available, dec!(10));
+        assert_eq!(account1.held, dec!(5));
+    }
+
+    #[test]
+    fn resolves() {
+        let messages = {
+            use MessageType::*;
+
+            vec![
+                Message(Deposit, 1, 1, Some(dec!(10))),
+                Message(Deposit, 1, 2, Some(dec!(5))),
+                Message(Dispute, 1, 2, None),
+                Message(Resolve, 1, 2, None),
+            ]
+        };
+
+        let snapshot = get_processed_snapshot(messages);
+
+        let account1 = snapshot.get(&1).unwrap();
+        assert_eq!(account1.available, dec!(15));
+        assert_eq!(account1.held, dec!(0));
+    }
+
+    #[test]
+    fn chargebacks() {
+        let messages = {
+            use MessageType::*;
+
+            vec![
+                Message(Deposit, 1, 1, Some(dec!(10))),
+                Message(Deposit, 1, 2, Some(dec!(5))),
+                Message(Dispute, 1, 2, None),
+                Message(Chargeback, 1, 2, None),
+            ]
+        };
+
+        let snapshot = get_processed_snapshot(messages);
+
+        let account1 = snapshot.get(&1).unwrap();
+        assert_eq!(account1.available, dec!(10));
+        assert_eq!(account1.held, dec!(0));
+        assert!(account1.frozen);
+    }
+}

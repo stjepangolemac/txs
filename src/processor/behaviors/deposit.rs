@@ -58,7 +58,6 @@ mod tests {
     #[test]
     fn deposit_must_have_amount() {
         let client = 1;
-        let amount = dec!(5);
 
         let mut accounts: Accounts = HashMap::new();
 

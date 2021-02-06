@@ -13,9 +13,9 @@ fn main() -> Result<()> {
 
     let mut processor = processor::Processor::new();
 
-    for message in reader.deserialize() {
-        processor.process(message?);
-    }
+    reader
+        .deserialize()
+        .for_each(|message| processor.process(message.expect("Could not read row in csv")));
 
     let snapshot = processor.snapshot();
     let mut wtr = csv::Writer::from_writer(stdout());
