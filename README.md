@@ -29,4 +29,4 @@ I don't have a lot of experience with business rules of disputes and chargebacks
 - Different transaction types could have different types for their data, that would provide even better safety guarantees but I've opted for a simpler version here as this is just an example
 - I've used anyhow to simplify error handling but a more sophisticated error type can be used to differentiate between different error variants
 - Withdrawals, disputes, resolves, and chargebacks could return a `Result<Option<()>>` to inform the caller if the system state was changed (I decided not to do that here but it would be a small change)
-- Invalid transactions will produce errors but they won't affect the application, this is very easy to change (partner errors are the only ones mentioned in the spec where it's said should be ignored)
+- Invalid transactions will produce errors but they won't affect the application, this is very easy to change (partner errors are the only ones mentioned in the spec where it's said that they should be ignored)
