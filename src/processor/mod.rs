@@ -117,9 +117,10 @@ impl Processor {
             }
         };
 
-        dbg!(res);
+        let was_deposit = matches!(transaction, Transaction::Deposit(_));
+        let was_ok = res.is_ok();
 
-        if matches!(transaction, Transaction::Deposit(_)) {
+        if was_deposit && was_ok {
             self.transactions
                 .insert(transaction_id, (transaction, false));
         }
