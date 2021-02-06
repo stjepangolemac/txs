@@ -8,7 +8,7 @@ mod processor;
 fn main() -> Result<()> {
     let options = cli::get_options();
 
-    let file = File::open(options.input)?;
+    let file = File::open(options.input_file)?;
     let mut reader = csv::Reader::from_reader(file);
 
     let mut processor = processor::Processor::new();

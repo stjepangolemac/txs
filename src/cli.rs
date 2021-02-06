@@ -6,7 +6,7 @@ use structopt::StructOpt;
 pub struct Options {
     /// Input csv file
     #[structopt(parse(from_os_str))]
-    pub input: PathBuf,
+    pub input_file: PathBuf,
 }
 
 pub fn get_options() -> Options {
