@@ -51,7 +51,11 @@ impl From<Message> for Transaction {
         let data = TransactionData {
             client,
             transaction,
-            amount,
+            amount: amount.map(|mut num| {
+                num.rescale(4);
+
+                num
+            }),
         };
 
         match message_type {
@@ -66,9 +70,9 @@ impl From<Message> for Transaction {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Account {
-    available: Decimal,
-    held: Decimal,
-    frozen: bool,
+    pub available: Decimal,
+    pub held: Decimal,
+    pub frozen: bool,
 }
 
 impl Account {
@@ -113,8 +117,10 @@ impl Processor {
             }
         };
 
-        self.transactions
-            .insert(transaction_id, (transaction, false));
+        if matches!(transaction, Transaction::Deposit(_)) {
+            self.transactions
+                .insert(transaction_id, (transaction, false));
+        }
     }
 
     pub fn snapshot(&self) -> &HashMap<u16, Account> {

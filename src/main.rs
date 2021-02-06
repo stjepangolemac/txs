@@ -1,10 +1,11 @@
-use std::error::Error;
+use anyhow::Result;
 use std::fs::File;
+use std::io::stdout;
 
 mod cli;
 mod processor;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let options = cli::get_options();
 
     let file = File::open(options.input)?;
@@ -17,7 +18,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let snapshot = processor.snapshot();
-    dbg!(snapshot);
+    let mut wtr = csv::Writer::from_writer(stdout());
+
+    wtr.write_record(&["client", "available", "held", "total", "locked"])?;
+
+    snapshot.iter().for_each(|(client_id, account)| {
+        wtr.serialize((
+            client_id,
+            account.available,
+            account.held,
+            account.total(),
+            account.frozen,
+        ))
+        .expect("Account could not be written to output");
+    });
+
+    wtr.flush()?;
 
     Ok(())
 }
