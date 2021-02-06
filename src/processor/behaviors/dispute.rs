@@ -27,15 +27,10 @@ pub fn dispute(
         }?;
 
         accounts.entry(*client).and_modify(|account| {
-            let not_frozen = !account.frozen;
-            let has_funds = account.available >= amount;
+            account.available -= amount;
+            account.held += amount;
 
-            if not_frozen && has_funds {
-                account.available -= amount;
-                account.held += amount;
-
-                *referenced_transaction_disputed = true;
-            }
+            *referenced_transaction_disputed = true;
         });
 
         return Ok(());
@@ -91,6 +86,46 @@ mod tests {
 
         let account = accounts.get(&client).unwrap();
         assert_eq!(account.available, dec!(0));
+        assert_eq!(account.held, deposit_amount);
+    }
+
+    #[test]
+    fn cannot_dispute_already_disputed() {
+        let client = 1;
+        let deposit_amount = dec!(5);
+        let deposit_transaction_id = 1;
+
+        let mut accounts: Accounts = HashMap::new();
+        accounts.insert(
+            client,
+            Account {
+                available: deposit_amount,
+                held: dec!(0),
+                frozen: false,
+            },
+        );
+
+        let mut transactions: Transactions = HashMap::new();
+        transactions.insert(
+            deposit_transaction_id,
+            (
+                Transaction::Deposit(TransactionData {
+                    client,
+                    transaction: deposit_transaction_id,
+                    amount: Some(deposit_amount),
+                }),
+                true,
+            ),
+        );
+
+        let data = TransactionData {
+            client,
+            transaction: deposit_transaction_id,
+            amount: None,
+        };
+
+        let res = dispute(&data, &mut accounts, &mut transactions);
+        assert!(res.is_err());
     }
 
     #[test]

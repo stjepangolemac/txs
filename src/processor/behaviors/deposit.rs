@@ -4,7 +4,7 @@ use rust_decimal_macros::*;
 
 pub fn deposit(data: &TransactionData, accounts: &mut Accounts) -> Result<()> {
     let TransactionData { client, amount, .. } = data;
-    let amount = amount.expect("Deposit should have the amount");
+    let amount = amount.ok_or(anyhow!("Deposit should have the amount"))?;
 
     let mut res = Ok(());
 
@@ -56,7 +56,24 @@ mod tests {
     }
 
     #[test]
-    fn cannot_deposit_into_locked_account() {
+    fn deposit_must_have_amount() {
+        let client = 1;
+        let amount = dec!(5);
+
+        let mut accounts: Accounts = HashMap::new();
+
+        let data = TransactionData {
+            client,
+            transaction: 1,
+            amount: None,
+        };
+
+        let res = deposit(&data, &mut accounts);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn cannot_deposit_into_frozen_account() {
         let client = 1;
         let amount = dec!(5);
         let available = dec!(0);

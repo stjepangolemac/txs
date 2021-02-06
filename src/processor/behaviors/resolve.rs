@@ -26,19 +26,21 @@ pub fn resolve(
             _ => Err(anyhow!("Cannot resolve non deposit")),
         }?;
 
+        let mut res = Ok(());
+
         accounts.entry(*client).and_modify(|account| {
-            let not_frozen = !account.frozen;
-            let has_held_funds = account.held >= amount;
-
-            if not_frozen && has_held_funds {
-                account.available += amount;
-                account.held -= amount;
-
-                *referenced_transaction_disputed = false;
+            if account.held < amount {
+                res = Err(anyhow!("Cannot resolve a dispute, insufficient held funds"));
+                return;
             }
+
+            account.available += amount;
+            account.held -= amount;
+
+            *referenced_transaction_disputed = false;
         });
 
-        return Ok(());
+        return res;
     }
 
     Ok(())
@@ -91,6 +93,7 @@ mod tests {
 
         let account = accounts.get(&client).unwrap();
         assert_eq!(account.available, deposit_amount);
+        assert_eq!(account.held, dec!(0));
     }
 
     #[test]
@@ -125,6 +128,45 @@ mod tests {
         let data = TransactionData {
             client,
             transaction: 1,
+            amount: None,
+        };
+
+        let res = resolve(&data, &mut accounts, &mut transactions);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn cannot_resolve_no_held_funds() {
+        let client = 1;
+        let deposit_amount = dec!(5);
+        let deposit_transaction_id = 1;
+
+        let mut accounts: Accounts = HashMap::new();
+        accounts.insert(
+            client,
+            Account {
+                available: dec!(0),
+                held: deposit_amount - dec!(1),
+                frozen: false,
+            },
+        );
+
+        let mut transactions: Transactions = HashMap::new();
+        transactions.insert(
+            deposit_transaction_id,
+            (
+                Transaction::Deposit(TransactionData {
+                    client,
+                    transaction: deposit_transaction_id,
+                    amount: Some(deposit_amount),
+                }),
+                true,
+            ),
+        );
+
+        let data = TransactionData {
+            client,
+            transaction: deposit_transaction_id,
             amount: None,
         };
 

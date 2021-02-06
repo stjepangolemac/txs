@@ -26,16 +26,19 @@ pub fn chargeback(
             _ => Err(anyhow!("Cannot chargeback non deposit")),
         }?;
 
-        accounts.entry(*client).and_modify(|account| {
-            let has_held_funds = account.held >= amount;
+        let mut res = Ok(());
 
-            if has_held_funds {
-                account.held -= amount;
-                account.frozen = true;
+        accounts.entry(*client).and_modify(|account| {
+            if account.held < amount {
+                res = Err(anyhow!("Cannot chargeback, insufficient held funds"));
+                return;
             }
+
+            account.held -= amount;
+            account.frozen = true;
         });
 
-        return Ok(());
+        return res;
     }
 
     Ok(())
@@ -123,6 +126,45 @@ mod tests {
         let data = TransactionData {
             client,
             transaction: withdrawal_transaction_id,
+            amount: None,
+        };
+
+        let res = chargeback(&data, &mut accounts, &mut transactions);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn cannot_chargeback_no_held_funds() {
+        let client = 1;
+        let deposit_amount = dec!(5);
+        let deposit_transaction_id = 1;
+
+        let mut accounts: Accounts = HashMap::new();
+        accounts.insert(
+            client,
+            Account {
+                available: dec!(0),
+                held: deposit_amount - dec!(1),
+                frozen: false,
+            },
+        );
+
+        let mut transactions: Transactions = HashMap::new();
+        transactions.insert(
+            deposit_transaction_id,
+            (
+                Transaction::Deposit(TransactionData {
+                    client,
+                    transaction: deposit_transaction_id,
+                    amount: Some(deposit_amount),
+                }),
+                true,
+            ),
+        );
+
+        let data = TransactionData {
+            client,
+            transaction: deposit_transaction_id,
             amount: None,
         };
 
