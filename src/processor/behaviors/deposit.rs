@@ -1,17 +1,22 @@
 use crate::processor::{Account, Accounts, TransactionData};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rust_decimal_macros::*;
 
 pub fn deposit(data: &TransactionData, accounts: &mut Accounts) -> Result<()> {
     let TransactionData { client, amount, .. } = data;
     let amount = amount.expect("Deposit should have the amount");
 
+    let mut res = Ok(());
+
     accounts
         .entry(*client)
         .and_modify(|account| {
-            if !account.frozen {
-                account.available += amount
+            if account.frozen {
+                res = Err(anyhow!("Cannot deposit into frozen account"));
+                return;
             }
+
+            account.available += amount
         })
         .or_insert_with(|| Account {
             available: amount,
@@ -19,7 +24,7 @@ pub fn deposit(data: &TransactionData, accounts: &mut Accounts) -> Result<()> {
             frozen: false,
         });
 
-    Ok(())
+    res
 }
 
 #[cfg(test)]
@@ -73,12 +78,6 @@ mod tests {
         };
 
         let res = deposit(&data, &mut accounts);
-        assert!(res.is_ok());
-
-        let account = accounts.get(&client);
-        assert!(account.is_some());
-
-        let account = account.unwrap();
-        assert_eq!(account.available, available);
+        assert!(res.is_err());
     }
 }
