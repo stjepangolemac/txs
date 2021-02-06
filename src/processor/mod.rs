@@ -123,9 +123,9 @@ impl Processor {
             Transaction::Resolve(ref data) => {
                 behaviors::resolve(data, &mut self.accounts, &mut self.transactions)
             }
-            // Transaction::Chargeback(ref data) => behaviors::deposit(data, &mut self.accounts),
-            // TODO Remove panic
-            _ => Err(anyhow!("Something is messed up")),
+            Transaction::Chargeback(ref data) => {
+                behaviors::chargeback(data, &mut self.accounts, &mut self.transactions)
+            }
         };
     }
 

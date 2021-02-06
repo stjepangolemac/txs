@@ -4,7 +4,7 @@ use crate::processor::{
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 
-pub fn resolve(
+pub fn chargeback(
     data: &TransactionData,
     accounts: &mut Accounts,
     transactions: &mut Transactions,
@@ -26,18 +26,15 @@ pub fn resolve(
             Transaction::Deposit(data) => data
                 .amount
                 .ok_or_else(|| anyhow!("Referenced deposit should have the amount")),
-            _ => Err(anyhow!("Cannot resolve non deposit")),
+            _ => Err(anyhow!("Cannot chargeback non deposit")),
         }?;
 
         accounts.entry(*client).and_modify(|account| {
-            let not_frozen = !account.frozen;
             let has_held_funds = account.held >= amount;
 
-            if not_frozen && has_held_funds {
-                account.available += amount;
+            if has_held_funds {
                 account.held -= amount;
-
-                *referenced_transaction_disputed = false;
+                account.frozen = true;
             }
         });
 
@@ -53,7 +50,7 @@ mod tests {
     use rust_decimal_macros::*;
 
     #[test]
-    fn resolution_works() {
+    fn chargeback_works() {
         let client = 1;
         let deposit_amount = dec!(5);
         let deposit_transaction_id = 1;
@@ -87,15 +84,16 @@ mod tests {
             amount: None,
         };
 
-        let res = resolve(&data, &mut accounts, &mut transactions);
+        let res = chargeback(&data, &mut accounts, &mut transactions);
         assert!(res.is_ok());
 
         let account = accounts.get(&client).unwrap();
-        assert_eq!(account.available, deposit_amount);
+        assert_eq!(account.available, dec!(0));
+        assert_eq!(account.held, dec!(0));
     }
 
     #[test]
-    fn cannot_resolve_non_deposit() {
+    fn cannot_chargeback_non_deposit() {
         let client = 1;
         let withdrawal_amount = dec!(5);
         let withdrawal_transaction_id = 1;
@@ -104,8 +102,8 @@ mod tests {
         accounts.insert(
             client,
             Account {
-                available: withdrawal_amount,
-                held: dec!(0),
+                available: dec!(0),
+                held: withdrawal_amount,
                 frozen: false,
             },
         );
@@ -125,11 +123,11 @@ mod tests {
 
         let data = TransactionData {
             client,
-            transaction: 1,
+            transaction: withdrawal_transaction_id,
             amount: None,
         };
 
-        let res = resolve(&data, &mut accounts, &mut transactions);
+        let res = chargeback(&data, &mut accounts, &mut transactions);
         assert!(res.is_err());
     }
 }
