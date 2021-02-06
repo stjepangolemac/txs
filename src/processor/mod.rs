@@ -100,22 +100,8 @@ impl Processor {
         let transaction: Transaction = message.into();
 
         let _ = match transaction {
-            Transaction::Deposit(ref data) => {
-                let res = behaviors::deposit(&data, &mut self.accounts);
-
-                self.transactions
-                    .insert(transaction_id, (transaction, false));
-
-                res
-            }
-            Transaction::Withdrawal(ref data) => {
-                let res = behaviors::withdrawal(data, &mut self.accounts);
-
-                self.transactions
-                    .insert(transaction_id, (transaction, false));
-
-                res
-            }
+            Transaction::Deposit(ref data) => behaviors::deposit(&data, &mut self.accounts),
+            Transaction::Withdrawal(ref data) => behaviors::withdrawal(data, &mut self.accounts),
             Transaction::Dispute(ref data) => {
                 behaviors::dispute(data, &mut self.accounts, &mut self.transactions)
             }
@@ -126,6 +112,9 @@ impl Processor {
                 behaviors::chargeback(data, &mut self.accounts, &mut self.transactions)
             }
         };
+
+        self.transactions
+            .insert(transaction_id, (transaction, false));
     }
 
     pub fn snapshot(&self) -> &HashMap<u16, Account> {
