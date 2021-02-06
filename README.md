@@ -6,7 +6,7 @@ There are a few sample csv files in the `data/` dir and they can be processed by
 cargo run -- ./data/sample.csv
 ```
 
-Behaviors are fully tested which can be checked by doing:
+Common transaction combinations and behaviors are fully tested which can be checked by doing:
 
 ```
 cargo test
@@ -19,7 +19,7 @@ I don't have a lot of experience with business rules of disputes and chargebacks
 - Only deposits can create new accounts if the client is unknown
 - Withdrawals, disputes, resolves, and chargebacks to a nonexistent account don't change the system state, but won't error (maybe they should for logging purposes?)
 - You can only dispute a deposit (disputing a withdrawal would invent money when it's already gone, maybe that is okay?)
-- Dispute can push the account balance into negative (I suppose that's the risk a company needs to take, not sure)
+- Dispute can push the available account balance into negative (I suppose that's the risk a company needs to take, not sure)
 - Resolves and chargebacks will fail if there is not enough held funds (this probably means there's a bug in the system)
 
 # Potential improvements
