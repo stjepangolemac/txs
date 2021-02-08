@@ -1,10 +1,19 @@
 use crate::processor::{Account, ClientId, TransactionData};
 use anyhow::{anyhow, Result};
+use rust_decimal_macros::*;
 use std::collections::HashMap;
 
 pub fn withdrawal(data: &TransactionData, accounts: &mut HashMap<ClientId, Account>) -> Result<()> {
     let TransactionData { client, amount, .. } = data;
-    let amount = amount.ok_or(anyhow!("Withdrawal should have the amount"))?;
+    let amount = amount
+        .ok_or(anyhow!("Withdrawal should have the amount"))
+        .and_then(|amount| {
+            if amount < dec!(0) {
+                Err(anyhow!("Deposit amount cannot be negative"))
+            } else {
+                Ok(amount)
+            }
+        })?;
 
     let mut res = Ok(());
 
@@ -80,6 +89,30 @@ mod tests {
             client,
             transaction: 1,
             amount: None,
+        };
+
+        let res = withdrawal(&data, &mut accounts);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn withdraw_amount_must_be_positive() {
+        let client = 1;
+
+        let mut accounts: HashMap<ClientId, Account> = HashMap::new();
+        accounts.insert(
+            client,
+            Account {
+                available: dec!(10),
+                held: dec!(0),
+                frozen: true,
+            },
+        );
+
+        let data = TransactionData {
+            client,
+            transaction: 1,
+            amount: Some(dec!(-1)),
         };
 
         let res = withdrawal(&data, &mut accounts);

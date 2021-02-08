@@ -1,4 +1,5 @@
 use anyhow::Result;
+use csv::{ReaderBuilder, Trim};
 use std::fs::File;
 use std::io::stdout;
 
@@ -9,7 +10,7 @@ fn main() -> Result<()> {
     let options = cli::get_options();
 
     let file = File::open(options.input_file)?;
-    let mut reader = csv::Reader::from_reader(file);
+    let mut reader = ReaderBuilder::new().trim(Trim::All).from_reader(file);
 
     let mut processor = processor::Processor::new();
 

@@ -4,7 +4,15 @@ use rust_decimal_macros::*;
 
 pub fn deposit(data: &TransactionData, accounts: &mut Accounts) -> Result<()> {
     let TransactionData { client, amount, .. } = data;
-    let amount = amount.ok_or(anyhow!("Deposit should have the amount"))?;
+    let amount = amount
+        .ok_or(anyhow!("Deposit should have the amount"))
+        .and_then(|amount| {
+            if amount < dec!(0) {
+                Err(anyhow!("Deposit amount cannot be negative"))
+            } else {
+                Ok(amount)
+            }
+        })?;
 
     let mut res = Ok(());
 
@@ -65,6 +73,22 @@ mod tests {
             client,
             transaction: 1,
             amount: None,
+        };
+
+        let res = deposit(&data, &mut accounts);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn deposit_amount_must_be_positive() {
+        let client = 1;
+
+        let mut accounts: Accounts = HashMap::new();
+
+        let data = TransactionData {
+            client,
+            transaction: 1,
+            amount: Some(dec!(-1)),
         };
 
         let res = deposit(&data, &mut accounts);
