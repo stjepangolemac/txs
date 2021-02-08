@@ -9,7 +9,7 @@ pub fn withdrawal(data: &TransactionData, accounts: &mut HashMap<ClientId, Accou
         .ok_or(anyhow!("Withdrawal should have the amount"))
         .and_then(|amount| {
             if amount < dec!(0) {
-                Err(anyhow!("Deposit amount cannot be negative"))
+                Err(anyhow!("Withdrawal amount cannot be negative"))
             } else {
                 Ok(amount)
             }
